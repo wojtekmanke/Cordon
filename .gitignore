@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Inspect logs are large; the summaries under results/ are what is committed.
+logs/
+*.eval
+# Cached activations.
+*.npy
+*.npz
+*.safetensors
+.DS_Store
