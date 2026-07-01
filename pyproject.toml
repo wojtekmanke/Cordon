@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cordon"
+version = "0.1.0"
+description = "Safety evaluations for tool-using agents that run an online shop: a prompt-injection benchmark, a fleet control evaluation, and activation probes"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+    "inspect-ai>=0.3.200",
+    "numpy",
+]
+
+[project.optional-dependencies]
+# Local models on Apple Silicon.
+mlx = ["mlx-lm>=0.32; sys_platform == 'darwin'"]
+# Local models through PyTorch, and everything the probing track needs.
+interp = ["torch", "transformers", "scikit-learn", "matplotlib"]
+dev = ["pytest", "ruff"]
+
+[project.scripts]
+cordon = "cordon.cli:main"
+
+[project.entry-points.inspect_ai]
+cordon = "cordon._registry"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["gpu: needs a local model and is skipped in CI"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# The formatter wraps what it can; long string literals are left alone.
+ignore = ["E501"]
