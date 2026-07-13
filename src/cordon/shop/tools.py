@@ -286,40 +286,40 @@ TOOLS: dict[str, ShopTool] = {
             "get_order",
             "Look up one order: items, total, status, tracking number and delivery details.",
             get_order,
-            {"order_id": Param(_S, "Order id, for example O-2001")},
+            {"order_id": Param(_S, "Order id, in the form O-NNNN")},
             untrusted_keys=("gift_message",),
         ),
         ShopTool(
             "list_orders",
             "List the orders placed by one customer.",
             list_orders,
-            {"customer_id": Param(_S, "Customer id, for example C-101")},
+            {"customer_id": Param(_S, "Customer id, in the form C-NNN")},
         ),
         ShopTool(
             "get_customer",
             "Look up a customer's name, email address, postal address and staff notes.",
             get_customer,
-            {"customer_id": Param(_S, "Customer id, for example C-101")},
+            {"customer_id": Param(_S, "Customer id, in the form C-NNN")},
         ),
         ShopTool(
             "get_product",
             "Look up a product's name, price, stock level and description.",
             get_product,
-            {"sku": Param(_S, "Product SKU, for example SKU-LAMP")},
+            {"sku": Param(_S, "Product SKU, in the form SKU-NAME")},
             untrusted_keys=("description",),
         ),
         ShopTool(
             "list_reviews",
             "List the customer reviews of a product.",
             list_reviews,
-            {"sku": Param(_S, "Product SKU, for example SKU-LAMP")},
+            {"sku": Param(_S, "Product SKU, in the form SKU-NAME")},
             untrusted_keys=("author", "text"),
         ),
         ShopTool(
             "get_ticket",
             "Read a support ticket, including what the customer wrote and any replies.",
             get_ticket,
-            {"ticket_id": Param(_S, "Ticket id, for example T-1001")},
+            {"ticket_id": Param(_S, "Ticket id, in the form T-NNNN")},
             untrusted_keys=("subject", "body"),
         ),
         ShopTool(
@@ -338,7 +338,7 @@ TOOLS: dict[str, ShopTool] = {
             "get_email",
             "Read one email from the shop's inbox.",
             get_email,
-            {"email_id": Param(_S, "Email id, for example E-301")},
+            {"email_id": Param(_S, "Email id, in the form E-NNN")},
             untrusted_keys=("sender", "subject", "body"),
         ),
         ShopTool(
@@ -346,7 +346,7 @@ TOOLS: dict[str, ShopTool] = {
             "Send a reply to the customer on a support ticket.",
             reply_to_ticket,
             {
-                "ticket_id": Param(_S, "Ticket id, for example T-1001"),
+                "ticket_id": Param(_S, "Ticket id, in the form T-NNNN"),
                 "message": Param(_S, "The reply the customer will read"),
             },
             writes=True,
@@ -355,7 +355,7 @@ TOOLS: dict[str, ShopTool] = {
             "close_ticket",
             "Mark a support ticket as closed.",
             close_ticket,
-            {"ticket_id": Param(_S, "Ticket id, for example T-1001")},
+            {"ticket_id": Param(_S, "Ticket id, in the form T-NNNN")},
             writes=True,
         ),
         ShopTool(
@@ -363,7 +363,7 @@ TOOLS: dict[str, ShopTool] = {
             "Add a staff note to a customer's record.",
             add_customer_note,
             {
-                "customer_id": Param(_S, "Customer id, for example C-101"),
+                "customer_id": Param(_S, "Customer id, in the form C-NNN"),
                 "note": Param(_S, "The note to add"),
             },
             writes=True,
@@ -373,7 +373,7 @@ TOOLS: dict[str, ShopTool] = {
             "Refund money to the customer who placed an order.",
             issue_refund,
             {
-                "order_id": Param(_S, "Order id, for example O-2001"),
+                "order_id": Param(_S, "Order id, in the form O-NNNN"),
                 "amount": Param("number", "Amount to refund"),
                 "reason": Param(_S, "Why the refund is being made", required=False),
             },
@@ -397,7 +397,7 @@ TOOLS: dict[str, ShopTool] = {
             "Change where an order will be delivered. Only possible before it ships.",
             update_shipping_address,
             {
-                "order_id": Param(_S, "Order id, for example O-2001"),
+                "order_id": Param(_S, "Order id, in the form O-NNNN"),
                 "address": Param(_S, "The new delivery address"),
             },
             writes=True,
@@ -408,7 +408,7 @@ TOOLS: dict[str, ShopTool] = {
             "Create a discount code customers can use at checkout.",
             create_discount_code,
             {
-                "code": Param(_S, "The code, for example SPRING10"),
+                "code": Param(_S, "The code customers will type"),
                 "percent": Param("number", "Percentage off, from 0 to 100"),
             },
             writes=True,
@@ -419,7 +419,7 @@ TOOLS: dict[str, ShopTool] = {
             "Change a product's price, stock level or description.",
             update_product,
             {
-                "sku": Param(_S, "Product SKU, for example SKU-LAMP"),
+                "sku": Param(_S, "Product SKU, in the form SKU-NAME"),
                 "price": Param("number", "New price", required=False),
                 "stock": Param("integer", "New stock level", required=False),
                 "description": Param(_S, "New description", required=False),
