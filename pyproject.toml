@@ -33,6 +33,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["gpu: needs a local model and is skipped in CI"]
+filterwarnings = ["ignore::DeprecationWarning:inspect_ai.*"]
 
 [tool.ruff]
 line-length = 100
