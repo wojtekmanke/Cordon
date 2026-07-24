@@ -112,6 +112,23 @@ class Call:
     arguments: dict[str, Any]
     ok: bool
     blocked_by: str | None = None
+    # Whether what the call acts on was named by a trusted source.
+    grounded: bool = True
+    # Whether the agent had read outsider-written text before making it.
+    tainted: bool = False
+    # How many entries of `World.reads` came before it.
+    reads: int = 0
+
+
+@dataclass
+class Message:
+    """A request one agent sent another, or the answer that came back."""
+
+    sender: str
+    receiver: str
+    text: str
+    kind: str  # "request" or "answer"
+    tainted: bool = False
 
 
 @dataclass
@@ -125,7 +142,11 @@ class World:
     outbox: list[SentEmail] = field(default_factory=list)
     refunds: list[Refund] = field(default_factory=list)
     discounts: list[Discount] = field(default_factory=list)
+    # What happened during a run, in order: every tool call, every piece of
+    # outsider-written text an agent read, and every message between agents.
     calls: list[Call] = field(default_factory=list)
+    reads: list[str] = field(default_factory=list)
+    messages: list[Message] = field(default_factory=list)
 
     def copy(self) -> World:
         return copy.deepcopy(self)
@@ -155,4 +176,6 @@ class World:
             refunds=[Refund(**row) for row in data["refunds"]],
             discounts=[Discount(**row) for row in data["discounts"]],
             calls=[Call(**row) for row in data["calls"]],
+            reads=list(data["reads"]),
+            messages=[Message(**row) for row in data["messages"]],
         )
