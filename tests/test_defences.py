@@ -85,3 +85,24 @@ def test_a_stack_applies_every_part():
     assert shown == "[[DATA]] < |im_start| > [[/DATA]]"
     read = ctx(untrusted=["x"])
     assert asyncio.run(stack.review(read, TOOLS["issue_refund"], {"order_id": "O-2002"}))
+
+
+def test_calls_record_where_their_target_came_from(tmp_path):
+    from inspect_ai import eval
+
+    import cordon._registry  # noqa: F401
+    from cordon.bench.eval import shop_attacks
+    from cordon.shop import World
+
+    (log,) = eval(
+        shop_attacks(cases=40), model="scripted/gullible", log_dir=str(tmp_path), display="none"
+    )
+    for sample in log.samples:
+        world = World.from_snapshot(sample.store["world"])
+        refunds = [
+            c
+            for c in world.calls
+            if c.tool == "issue_refund" and c.arguments["order_id"] == "O-9999"
+        ]
+        assert all(not c.grounded and c.tainted and c.reads > 0 for c in refunds)
+        assert world.reads, "the planted text was read"

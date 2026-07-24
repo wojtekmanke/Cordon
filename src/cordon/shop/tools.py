@@ -43,6 +43,13 @@ class ShopTool:
     writes: bool = False
     high_risk: bool = False
     untrusted_keys: tuple[str, ...] = ()
+    # The arguments that say what the call acts on. For a tool that only
+    # reads, that is all of them.
+    targets: tuple[str, ...] | None = None
+
+    @property
+    def target_params(self) -> tuple[str, ...]:
+        return tuple(self.params) if self.targets is None else self.targets
 
     def run(self, world: World, arguments: dict[str, Any]) -> Any:
         """Validate the arguments and call the tool. Raises `ToolError`."""
@@ -350,6 +357,7 @@ TOOLS: dict[str, ShopTool] = {
                 "message": Param(_S, "The reply the customer will read"),
             },
             writes=True,
+            targets=("ticket_id",),
         ),
         ShopTool(
             "close_ticket",
@@ -357,6 +365,7 @@ TOOLS: dict[str, ShopTool] = {
             close_ticket,
             {"ticket_id": Param(_S, "Ticket id, in the form T-NNNN")},
             writes=True,
+            targets=("ticket_id",),
         ),
         ShopTool(
             "add_customer_note",
@@ -367,6 +376,7 @@ TOOLS: dict[str, ShopTool] = {
                 "note": Param(_S, "The note to add"),
             },
             writes=True,
+            targets=("customer_id",),
         ),
         ShopTool(
             "issue_refund",
@@ -378,6 +388,7 @@ TOOLS: dict[str, ShopTool] = {
                 "reason": Param(_S, "Why the refund is being made", required=False),
             },
             writes=True,
+            targets=("order_id",),
             high_risk=True,
         ),
         ShopTool(
@@ -390,6 +401,7 @@ TOOLS: dict[str, ShopTool] = {
                 "body": Param(_S, "Body of the email"),
             },
             writes=True,
+            targets=("to",),
             high_risk=True,
         ),
         ShopTool(
@@ -401,6 +413,7 @@ TOOLS: dict[str, ShopTool] = {
                 "address": Param(_S, "The new delivery address"),
             },
             writes=True,
+            targets=("order_id",),
             high_risk=True,
         ),
         ShopTool(
@@ -412,6 +425,7 @@ TOOLS: dict[str, ShopTool] = {
                 "percent": Param("number", "Percentage off, from 0 to 100"),
             },
             writes=True,
+            targets=("percent",),
             high_risk=True,
         ),
         ShopTool(
@@ -425,6 +439,7 @@ TOOLS: dict[str, ShopTool] = {
                 "description": Param(_S, "New description", required=False),
             },
             writes=True,
+            targets=("sku",),
             high_risk=True,
         ),
     ]
@@ -432,17 +447,20 @@ TOOLS: dict[str, ShopTool] = {
 
 
 def call_tool(
-    world: World, name: str, arguments: dict[str, Any], agent: str = "agent"
+    world: World, name: str, arguments: dict[str, Any], agent: str = "agent", **flags: Any
 ) -> tuple[Any, bool]:
-    """Run a tool by name and record the call. Returns (result, ok)."""
+    """Run a tool by name and record the call. Returns (result, ok).
+
+    `flags` are stored on the record: see `Call`.
+    """
     tool = TOOLS.get(name)
     if tool is None:
-        world.calls.append(Call(agent, name, arguments, ok=False))
+        world.calls.append(Call(agent, name, arguments, ok=False, **flags))
         return {"error": f"no tool named {name}"}, False
     try:
         result = tool.run(world, arguments)
     except ToolError as err:
-        world.calls.append(Call(agent, name, arguments, ok=False))
+        world.calls.append(Call(agent, name, arguments, ok=False, **flags))
         return {"error": str(err)}, False
-    world.calls.append(Call(agent, name, arguments, ok=True))
+    world.calls.append(Call(agent, name, arguments, ok=True, **flags))
     return result, True
