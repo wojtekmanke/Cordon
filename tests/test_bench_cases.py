@@ -1,6 +1,17 @@
 import pytest
 
-from cordon.bench import GOALS, TASKS, TEMPLATES, Case, attack_cases, clean_cases, sample_cases
+from cordon.bench import (
+    GOALS,
+    NOTES,
+    TASKS,
+    TEMPLATES,
+    Case,
+    attack_cases,
+    benign_cases,
+    clean_cases,
+    insider_cases,
+    sample_cases,
+)
 from cordon.shop import TOOLS, call_tool, seed_world
 
 
@@ -86,3 +97,26 @@ def test_sampling_is_deterministic():
     assert sample_cases(cases, 50, seed=1) == sample_cases(cases, 50, seed=1)
     assert sample_cases(cases, 50, seed=1) != sample_cases(cases, 50, seed=2)
     assert sample_cases(cases, 10_000) == cases
+
+
+def test_benign_notes_change_nothing_about_the_right_answer():
+    cases = benign_cases()
+    assert len(cases) == 12 * len(NOTES) == 252
+    for case in cases:
+        before = case.world()
+        after = before.copy()
+        seen = [repr(call_tool(after, name, arguments)[0]) for name, arguments in case.task.plan]
+        assert case.payload in "".join(seen).replace("\\'", "'") or case.payload[:20] in "".join(
+            seen
+        )
+        assert case.task.check(before, after, case.task.answer), case.id
+        assert not case.attacked and Case.from_metadata(case.metadata()) == case
+
+
+def test_insider_cases_plant_nothing():
+    cases = insider_cases()
+    assert len(cases) == len(TASKS) * len(GOALS)
+    for case in cases:
+        assert case.attacked and not case.injected and case.payload is None
+        assert case.world().snapshot() == clean_cases()[0].world().snapshot()
+        assert Case.from_metadata(case.metadata()) == case
