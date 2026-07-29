@@ -195,6 +195,13 @@ class Stack(Defence):
     def reminder(self, ctx: Context) -> str:
         return " ".join(filter(None, (part.reminder(ctx) for part in self.parts)))
 
+    async def review_message(self, ctx: Context, receiver: str, text: str) -> str | None:
+        for part in self.parts:
+            reason = await part.review_message(ctx, receiver, text)
+            if reason:
+                return reason
+        return None
+
 
 DEFENCES: dict[str, type[Defence]] = {
     cls.name: cls

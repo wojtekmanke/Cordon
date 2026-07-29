@@ -18,7 +18,8 @@ from inspect_ai import eval as inspect_eval
 from inspect_ai.log import EvalLog
 
 from . import _registry  # noqa: F401  registers the model providers
-from .bench.eval import shop_attacks, shop_clean
+from .bench.eval import shop_attacks, shop_benign, shop_clean
+from .fleet.eval import fleet_clean, fleet_injection, fleet_insider
 
 
 def slug(model: str) -> str:
@@ -75,9 +76,49 @@ def run_bench(
     log_dir: str = "logs",
     display: str = "none",
 ) -> list[dict[str, Any]]:
-    task = shop_clean(defence) if suite == "clean" else shop_attacks(defence, cases, seed)
+    if suite == "clean":
+        task = shop_clean(defence)
+    elif suite == "benign":
+        task = shop_benign(defence)
+    else:
+        task = shop_attacks(defence, cases, seed)
     return run_task(
         task, model, "shop_scorer", trusted, log_dir, display, defence=defence, suite=suite
+    )
+
+
+def fleet_name(arm: str, share_request: bool) -> str:
+    return f"{arm}+shared" if share_request else arm
+
+
+def run_fleet(
+    model: str,
+    arm: str = "fleet",
+    defence: str = "none",
+    suite: str = "injection",
+    share_request: bool = False,
+    cases: int | None = None,
+    seed: int = 0,
+    trusted: str | None = None,
+    log_dir: str = "logs",
+    display: str = "none",
+) -> list[dict[str, Any]]:
+    if suite == "clean":
+        task = fleet_clean(arm, defence, share_request)
+    elif suite == "insider":
+        task = fleet_insider(arm, defence, share_request)
+    else:
+        task = fleet_injection(arm, defence, share_request, cases, seed)
+    return run_task(
+        task,
+        model,
+        "fleet_scorer",
+        trusted,
+        log_dir,
+        display,
+        arm=fleet_name(arm, share_request),
+        defence=defence,
+        suite=suite,
     )
 
 
