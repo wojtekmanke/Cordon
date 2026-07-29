@@ -6,9 +6,17 @@ Inspect imports this module through the `inspect_ai` entry point, so
 
 from inspect_ai.model import modelapi
 
-from .bench.eval import shop_attacks, shop_clean
+from .bench.eval import shop_attacks, shop_benign, shop_clean
+from .fleet.eval import fleet_clean, fleet_injection, fleet_insider
 
-__all__ = ["shop_attacks", "shop_clean"]
+__all__ = [
+    "fleet_clean",
+    "fleet_injection",
+    "fleet_insider",
+    "shop_attacks",
+    "shop_benign",
+    "shop_clean",
+]
 
 
 @modelapi(name="mlx")

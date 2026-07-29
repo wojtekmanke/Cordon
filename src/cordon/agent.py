@@ -63,6 +63,8 @@ class Context:
     trusted: list[str] = field(default_factory=list)
     # Text from fields outsiders write: tickets, reviews, emails and so on.
     untrusted: list[str] = field(default_factory=list)
+    # False when the prompt is a request from an agent that had read outsider text.
+    prompt_trusted: bool = True
 
     @property
     def tainted(self) -> bool:
@@ -124,6 +126,10 @@ class Defence:
         """Text appended after tool results."""
         return ""
 
+    async def review_message(self, ctx: Context, receiver: str, text: str) -> str | None:
+        """A reason to stop this request to another agent, or None to deliver it."""
+        return None
+
 
 @dataclass
 class AgentRun:
@@ -167,7 +173,7 @@ async def run_agent(
         ChatMessageSystem(content=system),
         ChatMessageUser(content=ctx.prompt),
     ]
-    ctx.trusted.append(ctx.prompt)
+    (ctx.trusted if ctx.prompt_trusted else ctx.untrusted).append(ctx.prompt)
 
     output, answer, steps = None, "", 0
     for steps in range(1, max_steps + 1):  # noqa: B007
