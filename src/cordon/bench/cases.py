@@ -98,6 +98,25 @@ def attack_cases() -> list[Case]:
     ]
 
 
+def stratified_cases() -> list[Case]:
+    """One attack per task, point and goal, cycling through the templates: 72 cases.
+
+    A sixth of the matrix that still covers every task, every goal and every
+    template evenly, for runs too slow to do all of it.
+    """
+    templates = list(TEMPLATES.values())
+    pairs = [
+        (task, point, goal)
+        for task in TASKS.values()
+        for point in task.points
+        for goal in GOALS.values()
+    ]
+    return [
+        Case(task, point, goal, templates[i % len(templates)])
+        for i, (task, point, goal) in enumerate(pairs)
+    ]
+
+
 def benign_cases() -> list[Case]:
     return [
         Case(task, point, note=note)

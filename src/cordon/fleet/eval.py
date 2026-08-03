@@ -14,7 +14,14 @@ from inspect_ai.model import get_model
 from inspect_ai.scorer import Score, Scorer, Target, mean, scorer, stderr
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 
-from ..bench.cases import Case, attack_cases, clean_cases, insider_cases, sample_cases
+from ..bench.cases import (
+    Case,
+    attack_cases,
+    clean_cases,
+    insider_cases,
+    sample_cases,
+    stratified_cases,
+)
 from ..defences import make_defence
 from ..shop import World
 from .run import Fleet, FleetConfig
@@ -107,10 +114,17 @@ def fleet_injection(
     cases: int | None = None,
     seed: int = 0,
 ) -> Task:
-    """Every job with an injection planted in what the first agent reads."""
-    chosen = attack_cases()
-    if cases is not None:
-        chosen = sample_cases(chosen, cases, seed)
+    """Every job with an injection planted in what the first agent reads.
+
+    `cases=72` runs the stratified sixth of the matrix; any other number runs
+    a fixed random subset of that size.
+    """
+    if cases == 72:
+        chosen = stratified_cases()
+    else:
+        chosen = attack_cases()
+        if cases is not None:
+            chosen = sample_cases(chosen, cases, seed)
     return _task(chosen, FleetConfig(arm, share_request), defence, "injection")
 
 

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from typing import Any
 
 from inspect_ai.model import (
@@ -38,16 +39,84 @@ _LOADED: dict[tuple[str, str], Any] = {}
 DEFAULT_MAX_TOKENS = 512
 
 
+@dataclass(frozen=True)
+class Steer:
+    """An edit to the residual stream.
+
+    `ablate` removes the component along `vector` after every layer. `add`
+    adds `alpha` times `vector` after one layer.
+    """
+
+    vector: Any  # a numpy array of the model's width
+    mode: str = "ablate"
+    layer: int = 0
+    alpha: float = 1.0
+
+    @classmethod
+    def load(cls, path: str, mode: str = "ablate", layer: int = 0, alpha: float = 1.0) -> Steer:
+        import numpy as np
+
+        return cls(np.load(path), mode, layer, alpha)
+
+
+class Hub:
+    """Where the taps on a model's layers report to.
+
+    `record`, when a list, collects the residual stream at the last position
+    after every layer. `edit`, when set, may change the residual stream after
+    any layer. With neither set the taps do nothing.
+    """
+
+    def __init__(self) -> None:
+        self.record: list | None = None
+        self.edit = None
+
+    def after(self, index: int, out):
+        if self.edit is not None:
+            out = self.edit(index, out)
+        if self.record is not None:
+            self.record.append(out[0, -1])
+        return out
+
+
 class MLXBackend:
     def __init__(self, name: str) -> None:
         from mlx_lm import load
 
         self.model, self.tokenizer = load(name)
+        self.hub: Hub | None = None
+        self._prefixes: dict[str, tuple[int, Any]] = {}
 
     def render(self, messages: list[dict], tools: list[dict]) -> str:
         return self.tokenizer.apply_chat_template(
             messages, tools=tools or None, add_generation_prompt=True, tokenize=False
         )
+
+    def _split(self, prompt: str) -> tuple[str, str]:
+        """Split a prompt after its first turn, which holds the system prompt and tools.
+
+        That turn is the same for every call an agent makes in a run, so its
+        keys and values are computed once and reused.
+        """
+        cut = prompt.find("<|im_start|>", 1)
+        return (prompt[:cut], prompt[cut:]) if cut > 0 else ("", prompt)
+
+    def _prefix_cache(self, prefix: str):
+        import copy
+
+        import mlx.core as mx
+        from mlx_lm.models.cache import make_prompt_cache
+
+        if prefix not in self._prefixes:
+            if len(self._prefixes) >= 8:
+                self._prefixes.pop(next(iter(self._prefixes)))
+            tokens = self.tokenizer.encode(prefix, add_special_tokens=False)
+            cache = make_prompt_cache(self.model)
+            self.model(mx.array(tokens)[None], cache=cache)
+            mx.eval([c.state for c in cache])
+            self._prefixes[prefix] = (len(tokens), cache)
+        length, cache = self._prefixes[prefix]
+        return length, copy.deepcopy(cache)
 
     def complete(self, prompt: str, max_tokens: int, temperature: float, seed: int | None):
         import mlx.core as mx
@@ -56,18 +125,94 @@ class MLXBackend:
 
         if seed is not None:
             mx.random.seed(seed)
+        prefix, rest = self._split(prompt)
+        # Edits to the residual stream change the keys and values, so a cached
+        # prefix computed without them cannot be reused.
+        steering = self.hub is not None and self.hub.edit is not None
+        if prefix and not steering:
+            cached, cache = self._prefix_cache(prefix)
+            tokens = self.tokenizer.encode(rest, add_special_tokens=False)
+            extra = {"prompt_cache": cache}
+        else:
+            cached, tokens, extra = 0, self.tokenizer.encode(prompt, add_special_tokens=False), {}
         text, last = "", None
         for last in stream_generate(
             self.model,
             self.tokenizer,
-            prompt,
+            tokens,
             max_tokens=max_tokens,
             sampler=make_sampler(temp=temperature),
+            **extra,
         ):
             text += last.text
         if last is None:
             return "", 0, 0
-        return text, last.prompt_tokens, last.generation_tokens
+        return text, cached + len(tokens), last.generation_tokens
+
+    # --- access to activations, used by the probing track ---
+
+    def instrument(self) -> Hub:
+        """Wrap every layer in a tap. Done on first use, so plain runs are untouched."""
+        if self.hub is None:
+            import mlx.nn as nn
+
+            hub = Hub()
+
+            class Tap(nn.Module):
+                def __init__(self, inner, index: int) -> None:
+                    super().__init__()
+                    self.inner = inner
+                    self.index = index
+
+                def __call__(self, x, mask=None, cache=None):
+                    return hub.after(self.index, self.inner(x, mask, cache))
+
+            layers = self.model.model.layers
+            for index, layer in enumerate(layers):
+                layers[index] = Tap(layer, index)
+            self.hub = hub
+        return self.hub
+
+    @property
+    def n_layers(self) -> int:
+        return len(self.model.model.layers)
+
+    def hidden(self, prompt: str):
+        """The residual stream after each layer at the last token of `prompt`: [layers, width]."""
+        import mlx.core as mx
+        import numpy as np
+
+        hub = self.instrument()
+        tokens = mx.array(self.tokenizer.encode(prompt, add_special_tokens=False))[None]
+        hub.record = []
+        try:
+            self.model(tokens)
+            states = mx.stack(hub.record).astype(mx.float32)
+            mx.eval(states)
+        finally:
+            hub.record = None
+        return np.array(states)
+
+    def set_steering(self, steer: Steer | None) -> None:
+        """Change the residual stream on every later forward pass, or stop doing so."""
+        import mlx.core as mx
+
+        hub = self.instrument()
+        if steer is None:
+            hub.edit = None
+            return
+        vector = mx.array(steer.vector)
+        unit = vector / mx.linalg.norm(vector)
+
+        def edit(index: int, out):
+            if steer.mode == "ablate":
+                u = unit.astype(out.dtype)
+                return out - (out @ u)[..., None] * u
+            if index == steer.layer:
+                return out + (steer.alpha * vector).astype(out.dtype)
+            return out
+
+        hub.edit = edit
 
 
 class TorchBackend:
@@ -141,12 +286,28 @@ class LocalAPI(ModelAPI):
         **model_args: Any,
     ) -> None:
         super().__init__(model_name=model_name, base_url=base_url, api_key=api_key, config=config)
+        # steer=<path to a .npy vector> with steer_mode, steer_layer and steer_alpha
+        # edits the residual stream on every call made through this model.
+        self.steer = None
+        if "steer" in model_args:
+            self.steer = Steer.load(
+                model_args.pop("steer"),
+                model_args.pop("steer_mode", "ablate"),
+                int(model_args.pop("steer_layer", 0)),
+                float(model_args.pop("steer_alpha", 1.0)),
+            )
         self.model_args = model_args
 
     def _generate(self, messages, tools, max_tokens, temperature, seed):
         backend = load_backend(self.kind, self.model_name, **self.model_args)
         prompt = backend.render(messages, tools)
-        return backend.complete(prompt, max_tokens, temperature, seed)
+        if self.steer is None and getattr(backend, "hub", None) is None:
+            return backend.complete(prompt, max_tokens, temperature, seed)
+        backend.set_steering(self.steer)
+        try:
+            return backend.complete(prompt, max_tokens, temperature, seed)
+        finally:
+            backend.set_steering(None)
 
     async def generate(
         self,
