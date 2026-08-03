@@ -120,3 +120,16 @@ def test_insider_cases_plant_nothing():
         assert case.attacked and not case.injected and case.payload is None
         assert case.world().snapshot() == clean_cases()[0].world().snapshot()
         assert Case.from_metadata(case.metadata()) == case
+
+
+def test_the_stratified_subset_covers_everything_evenly():
+    from collections import Counter
+
+    from cordon.bench.cases import stratified_cases
+
+    cases = stratified_cases()
+    assert len(cases) == 72 and len({c.id for c in cases}) == 72
+    assert set(Counter(c.goal.id for c in cases).values()) == {12}
+    assert {c.task.id for c in cases} == set(TASKS)
+    per_template = Counter(c.template.id for c in cases)
+    assert set(per_template) == set(TEMPLATES) and max(per_template.values()) <= 11

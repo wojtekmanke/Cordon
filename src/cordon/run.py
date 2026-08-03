@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,18 @@ from .fleet.eval import fleet_clean, fleet_injection, fleet_insider
 def slug(model: str) -> str:
     """A directory name for a model, from the last part of its id."""
     return re.sub(r"[^A-Za-z0-9._-]+", "-", model.split("/")[-1]).strip("-").lower()
+
+
+def code_version() -> str:
+    """The commit the results were produced by, marked if files had uncommitted changes."""
+    root = Path(__file__).resolve().parents[2]
+
+    def git(*args: str) -> str:
+        done = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
+        return done.stdout.strip()
+
+    commit = git("rev-parse", "--short", "HEAD") or "unknown"
+    return f"{commit}+changes" if git("status", "--porcelain", "--", "src") else commit
 
 
 def rows_from_log(log: EvalLog, scorer: str, **extra: Any) -> list[dict[str, Any]]:
@@ -63,7 +76,7 @@ def run_task(
     )
     if log.status != "success":
         raise RuntimeError(f"run did not finish: {log.status}: {log.error}")
-    return rows_from_log(log, scorer, model=model, trusted=trusted, **extra)
+    return rows_from_log(log, scorer, model=model, trusted=trusted, code=code_version(), **extra)
 
 
 def run_bench(
