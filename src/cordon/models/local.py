@@ -235,6 +235,69 @@ class TorchBackend:
     def encode(self, prompt: str):
         return self.tokenizer(prompt, return_tensors="pt", add_special_tokens=False).to(self.device)
 
+    # --- access to activations, used by the probing track ---
+
+    @property
+    def layers(self):
+        return self.model.model.layers
+
+    @property
+    def n_layers(self) -> int:
+        return len(self.layers)
+
+    def hidden(self, prompt: str):
+        """The residual stream after each layer at the last token of `prompt`: [layers, width]."""
+        import torch
+
+        # Read with hooks of our own, registered after any steering hooks, so
+        # that what is read is what the next layer receives. The model's own
+        # hidden-state output misses edits made by hooks and applies the final
+        # norm to the last layer.
+        states: list = []
+
+        def read(module, inputs, output):
+            out = output[0] if isinstance(output, tuple) else output
+            states.append(out[0, -1])
+
+        hooks = [layer.register_forward_hook(read) for layer in self.layers]
+        try:
+            with torch.no_grad():
+                self.model(**self.encode(prompt))
+        finally:
+            for hook in hooks:
+                hook.remove()
+        return torch.stack(states).float().cpu().numpy()
+
+    def set_steering(self, steer: Steer | None) -> None:
+        """Change the residual stream on every later forward pass, or stop doing so."""
+        import torch
+
+        for hook in getattr(self, "_hooks", []):
+            hook.remove()
+        self._hooks = []
+        if steer is None:
+            return
+        vector = torch.as_tensor(steer.vector, device=self.device)
+        unit = vector / vector.norm()
+
+        def make(index: int):
+            def hook(module, inputs, output):
+                out = output[0] if isinstance(output, tuple) else output
+                if steer.mode == "ablate":
+                    u = unit.to(out.dtype)
+                    out = out - (out @ u).unsqueeze(-1) * u
+                elif index == steer.layer:
+                    out = out + (steer.alpha * vector).to(out.dtype)
+                else:
+                    return None
+                return (out, *output[1:]) if isinstance(output, tuple) else out
+
+            return hook
+
+        self._hooks = [
+            layer.register_forward_hook(make(index)) for index, layer in enumerate(self.layers)
+        ]
+
     def complete(self, prompt: str, max_tokens: int, temperature: float, seed: int | None):
         import torch
 
@@ -301,7 +364,7 @@ class LocalAPI(ModelAPI):
     def _generate(self, messages, tools, max_tokens, temperature, seed):
         backend = load_backend(self.kind, self.model_name, **self.model_args)
         prompt = backend.render(messages, tools)
-        if self.steer is None and getattr(backend, "hub", None) is None:
+        if self.steer is None:
             return backend.complete(prompt, max_tokens, temperature, seed)
         backend.set_steering(self.steer)
         try:
