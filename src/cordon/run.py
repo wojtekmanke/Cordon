@@ -63,11 +63,13 @@ def run_task(
     trusted: str | None = None,
     log_dir: str = "logs",
     display: str = "none",
+    model_args: dict[str, Any] | None = None,
     **extra: Any,
 ) -> list[dict[str, Any]]:
     (log,) = inspect_eval(
         task,
         model=model,
+        model_args=model_args or {},
         model_roles={"trusted": trusted} if trusted else None,
         log_dir=log_dir,
         display=display,
@@ -88,7 +90,11 @@ def run_bench(
     trusted: str | None = None,
     log_dir: str = "logs",
     display: str = "none",
+    model_args: dict[str, Any] | None = None,
+    label: str | None = None,
 ) -> list[dict[str, Any]]:
+    """Run one suite. `label` names the condition in the records when it is not
+    just the defence, for example a run with the model's activations edited."""
     if suite == "clean":
         task = shop_clean(defence)
     elif suite == "benign":
@@ -96,7 +102,15 @@ def run_bench(
     else:
         task = shop_attacks(defence, cases, seed)
     return run_task(
-        task, model, "shop_scorer", trusted, log_dir, display, defence=defence, suite=suite
+        task,
+        model,
+        "shop_scorer",
+        trusted,
+        log_dir,
+        display,
+        model_args,
+        defence=label or defence,
+        suite=suite,
     )
 
 
