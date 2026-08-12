@@ -1,0 +1,21 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # No model weights and no GPU here: the tests run on scripted models,
+      # synthetic activations and tiny randomly initialised networks. Tests
+      # that need MLX or PyTorch skip themselves when those are not installed.
+      - run: pip install -e ".[dev]" scikit-learn
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: pytest -q
