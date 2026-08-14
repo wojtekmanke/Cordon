@@ -1,7 +1,15 @@
 """Command line: run the evaluations and rebuild the reports.
 
-cordon bench --model mlx/mlx-community/Qwen2.5-7B-Instruct-4bit --defence none,spotlight
-cordon report
+Each step writes records under results/; `cordon report` turns them into the
+tables in docs/results/ and the figures in docs/figures/.
+
+    cordon bench    run the prompt-injection benchmark
+    cordon fleet    run the fleet control evaluation
+    cordon monitor  score recorded runs with a monitor
+    cordon interp   read activations, fit probes, save steering directions
+    cordon report   rebuild tables and figures
+
+The Makefile lists the exact commands behind the published results.
 """
 
 from __future__ import annotations
@@ -203,10 +211,19 @@ def _report(args: argparse.Namespace) -> None:
 
     for path in write_reports(RESULTS, Path(args.out)):
         print(path)
+    try:
+        from .figures import write_figures
+    except ImportError:
+        print("matplotlib is not installed; skipped the figures")
+        return
+    for path in write_figures(RESULTS, Path(args.figures)):
+        print(path)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="cordon", description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        prog="cordon", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     commands = parser.add_subparsers(dest="command", required=True)
 
     bench = commands.add_parser("bench", help="run the prompt-injection benchmark")
@@ -272,6 +289,7 @@ def main() -> None:
 
     report = commands.add_parser("report", help="rebuild the result tables from results/")
     report.add_argument("--out", default="docs/results")
+    report.add_argument("--figures", default="docs/figures")
     report.set_defaults(run=_report)
 
     args = parser.parse_args()
