@@ -64,6 +64,9 @@ def _axes(theme: dict[str, Any], width: float, height: float, columns: int = 1, 
             "axes.titlesize": 10,
             "axes.titleweight": "bold",
             "axes.titlelocation": "left",
+            "text.color": theme["ink"],
+            "axes.titlecolor": theme["ink"],
+            "axes.labelcolor": theme["secondary"],
         }
     )
     figure, axes = plt.subplots(1, columns, figsize=(width, height), **kwargs)
@@ -76,9 +79,6 @@ def _axes(theme: dict[str, Any], width: float, height: float, columns: int = 1, 
             axis.spines[side].set_color(theme["axis"])
             axis.spines[side].set_linewidth(0.8)
         axis.tick_params(colors=theme["muted"], length=0, labelsize=8.5)
-        axis.title.set_color(theme["ink"])
-        axis.xaxis.label.set_color(theme["secondary"])
-        axis.yaxis.label.set_color(theme["secondary"])
         axis.set_axisbelow(True)
     return figure, axes
 
@@ -88,6 +88,26 @@ def _dot(axis, theme, x: float, y: float, colour: str) -> None:
     axis.plot(
         [x], [y], "o", ms=7.5, color=colour, mec=theme["surface"], mew=1.5, zorder=3, clip_on=False
     )
+
+
+def _legend(axis, theme) -> None:
+    """A legend in a row between the title and the plot, clear of the data.
+
+    A single series gets none: the title already says what is plotted.
+    """
+    if len(axis.get_legend_handles_labels()[0]) < 2:
+        return
+    legend = axis.legend(
+        loc="lower left",
+        bbox_to_anchor=(-0.01, 1.0),
+        ncols=4,
+        frameon=False,
+        fontsize=8.5,
+        handlelength=1.4,
+        columnspacing=1.6,
+    )
+    for text in legend.get_texts():
+        text.set_color(theme["secondary"])
 
 
 def defence_figure(rows: list[dict[str, Any]], theme: dict[str, Any]):
@@ -173,11 +193,9 @@ def sweep_figure(result: dict[str, Any], theme: dict[str, Any]):
     axis.set_ylim(0.4, 1.0)
     axis.set_yticks([0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
     axis.set_xlabel("Layer")
-    axis.set_title("Probe AUROC on attack wordings held out of training")
+    axis.set_title("Probe AUROC on attack wordings held out of training", pad=26)
     axis.grid(axis="y", color=theme["grid"], lw=0.6)
-    legend = axis.legend(loc="lower right", frameon=False, fontsize=8.5)
-    for text in legend.get_texts():
-        text.set_color(theme["secondary"])
+    _legend(axis, theme)
     figure.tight_layout()
     figure.subplots_adjust(right=0.74)
     return figure
@@ -203,11 +221,9 @@ def monitor_figure(counts: dict[str, int], rows: list[dict[str, Any]], theme: di
     axis.set_xticks([0, 25, 50, 75, 100], ["0", "25", "50", "75", "100%"])
     axis.set_yticks([0, 25, 50, 75, 100], ["0", "25", "50", "75", "100%"])
     axis.set_xlabel("Honest events a person would have to audit")
-    axis.set_title("Successful attacks with a flagged event")
+    axis.set_title("Successful attacks with a flagged event", pad=26)
     axis.grid(color=theme["grid"], lw=0.6)
-    legend = axis.legend(loc="lower right", frameon=False, fontsize=8.5)
-    for text in legend.get_texts():
-        text.set_color(theme["secondary"])
+    _legend(axis, theme)
     figure.tight_layout()
     return figure
 
