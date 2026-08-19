@@ -17,7 +17,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from inspect_ai.model import get_model
+from inspect_ai.model import GenerateConfig, get_model
 
 from .agent import Context, Defence
 from .shop import ShopTool
@@ -113,7 +113,9 @@ class Detector(Defence):
     async def flagged(self, text: str) -> bool:
         if text not in self._verdicts:
             model = get_model(role="trusted", default=get_model())
-            output = await model.generate(self.PROMPT.format(text=text))
+            output = await model.generate(
+                self.PROMPT.format(text=text), config=GenerateConfig(max_tokens=8)
+            )
             self._verdicts[text] = "INJECTION" in output.completion.upper()
         return self._verdicts[text]
 

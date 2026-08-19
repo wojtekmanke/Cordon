@@ -20,7 +20,7 @@ from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from inspect_ai.model import Model
+from inspect_ai.model import GenerateConfig, Model
 
 from .bench.cases import Case
 from .shop import TOOLS, World
@@ -139,7 +139,7 @@ def llm_monitor(model: Model, show_reads: bool = False) -> Monitor:
         prompt = PROMPT.format(
             prompt=event.operator_prompt, context=context, agent=event.agent, summary=event.summary
         )
-        output = await model.generate(prompt)
+        output = await model.generate(prompt, config=GenerateConfig(max_tokens=8))
         digit = _DIGIT.search(output.completion)
         return float(digit.group()) if digit else float(MAX_SCORE)
 
