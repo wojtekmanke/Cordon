@@ -28,8 +28,8 @@ def slug(model: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "-", model.split("/")[-1]).strip("-").lower()
 
 
-def code_version() -> str:
-    """The commit the results were produced by, marked if files had uncommitted changes."""
+def _code_version() -> str:
+    """The commit the code is at, marked if files under src/ had uncommitted changes."""
     root = Path(__file__).resolve().parents[2]
 
     def git(*args: str) -> str:
@@ -38,6 +38,11 @@ def code_version() -> str:
 
     commit = git("rev-parse", "--short", "HEAD") or "unknown"
     return f"{commit}+changes" if git("status", "--porcelain", "--", "src") else commit
+
+
+# Read once, when the process starts: that is the code a run executes, however
+# long it takes and whatever is committed in the meantime.
+CODE_VERSION = _code_version()
 
 
 def rows_from_log(log: EvalLog, scorer: str, **extra: Any) -> list[dict[str, Any]]:
@@ -78,7 +83,7 @@ def run_task(
     )
     if log.status != "success":
         raise RuntimeError(f"run did not finish: {log.status}: {log.error}")
-    return rows_from_log(log, scorer, model=model, trusted=trusted, code=code_version(), **extra)
+    return rows_from_log(log, scorer, model=model, trusted=trusted, code=CODE_VERSION, **extra)
 
 
 def run_bench(
