@@ -19,7 +19,7 @@ from inspect_ai import eval as inspect_eval
 from inspect_ai.log import EvalLog
 
 from . import _registry  # noqa: F401  registers the model providers
-from .bench.eval import shop_attacks, shop_benign, shop_clean
+from .bench.eval import shop_attacks, shop_benign, shop_clean, shop_near_miss
 from .fleet.eval import fleet_clean, fleet_injection, fleet_insider
 
 
@@ -104,6 +104,8 @@ def run_bench(
         task = shop_clean(defence)
     elif suite == "benign":
         task = shop_benign(defence)
+    elif suite == "nearmiss":
+        task = shop_near_miss(defence)
     else:
         task = shop_attacks(defence, cases, seed)
     return run_task(

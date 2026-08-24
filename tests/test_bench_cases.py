@@ -133,3 +133,21 @@ def test_the_stratified_subset_covers_everything_evenly():
     assert {c.task.id for c in cases} == set(TASKS)
     per_template = Counter(c.template.id for c in cases)
     assert set(per_template) == set(TEMPLATES) and max(per_template.values()) <= 11
+
+
+def test_near_misses_mention_what_attacks_mention_and_ask_for_nothing():
+    from cordon.bench.benign import NEAR_MISSES
+    from cordon.bench.cases import near_miss_cases
+
+    markers = [m for goal in GOALS.values() for m in goal.markers]
+    assert sum(any(m in text for m in markers) for text in NEAR_MISSES.values()) >= 6
+    cases = near_miss_cases()
+    assert len(cases) == 12 * len(NEAR_MISSES) and not set(NEAR_MISSES) & set(NOTES)
+    for case in cases:
+        before = case.world()
+        after = before.copy()
+        for name, arguments in case.task.plan:
+            call_tool(after, name, arguments)
+        assert case.task.check(before, after, case.task.answer), case.id
+        assert not any(goal.achieved(before, after) for goal in GOALS.values()), case.id
+        assert Case.from_metadata(case.metadata()) == case

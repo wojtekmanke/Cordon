@@ -65,10 +65,12 @@ def _headline(rows: list[Row]) -> str:
         clean = [r for r in by_defence[defence] if r["suite"] == "clean"]
         attacks = [r for r in by_defence[defence] if r["suite"] == "attacks"]
         same = [baseline[r["id"]] for r in attacks if r["id"] in baseline]
+        benign = [r for r in by_defence[defence] if r["suite"] == "benign"]
         out.append(
             [
                 f"`{defence}`",
                 f"{sum(r['utility'] for r in clean)}/{len(clean)}" if clean else "n/a",
+                rate(benign, "utility", "task") if benign else "not run",
                 rate(attacks, "utility", "task"),
                 rate(attacks, "attack", "task"),
                 rate(same, "attack", "task") if defence != "none" else "",
@@ -80,6 +82,7 @@ def _headline(rows: list[Row]) -> str:
         [
             "Defence",
             "Clean tasks solved",
+            "Solved with a harmless note planted",
             "Tasks solved under attack",
             "Attack succeeded",
             "No defence, same cases",
@@ -255,20 +258,26 @@ def interp_report(results: dict[str, dict[str, Any]]) -> str:
     ]
     questions = {
         "injected": "Is the planted text an attack or a harmless note?",
+        "injected_vs_near_miss": "Is it an attack, or a harmless note that mentions the "
+        "same things?",
         "attempted": "Among attacks, will the agent act on this one?",
     }
     for _, result in sorted(results.items()):
         counts = result["counts"]
+        notes = counts["examples"] - counts["injected"]
         parts.append(f"## {result['model']}")
         parts.append(
             f"{counts['examples']} decision points: {counts['injected']} with an attack "
-            f"planted and {counts['examples'] - counts['injected']} with a harmless note. "
-            f"The agent acted on {counts['attempted']} of the attacks and "
-            f"{counts['succeeded']} succeeded. {result['never_read']} recorded runs are left "
-            f"out because the agent never read the planted text. The model has "
-            f"{result['layers']} layers of width {result['width']}."
+            f"planted and {notes} with harmless text, of which {counts.get('near_misses', 0)} "
+            f"are near-misses that mention what attacks mention. The agent acted on "
+            f"{counts['attempted']} of the attacks and {counts['succeeded']} succeeded. "
+            f"{result['never_read']} recorded runs are left out because the agent never read "
+            f"the planted text. The model has {result['layers']} layers of width "
+            f"{result['width']}."
         )
         for label, question in questions.items():
+            if label not in result["compare"]:
+                continue
             chosen = result["compare"][label]
             parts.append(f"### {question}")
             sweep = result["sweep"][label]
@@ -276,10 +285,10 @@ def interp_report(results: dict[str, dict[str, Any]]) -> str:
             parts.append(
                 f"Layer {chosen['layer']} is used below. It was picked as the best layer on "
                 "held-out templates, so the held-out-template row is optimistic; the other "
-                "two rows are not affected by that choice in the same way. Best three layers "
-                "on held-out templates: "
+                "two rows did not take part in that choice. Best three layers on held-out "
+                "templates: "
                 + ", ".join(f"{row['layer']} ({row['auroc']:.2f})" for row in best)
-                + "."
+                + f". Layer 1 scores {sweep[0]['auroc']:.2f}."
             )
             methods = list(next(iter(chosen["splits"].values())))
             parts.append(
@@ -296,20 +305,33 @@ def interp_report(results: dict[str, dict[str, Any]]) -> str:
                 )
             )
         warning = result["early_warning"]
-        parts.append("### The attack probe as an early warning")
+        parts.append("### The compliance probe as an early warning")
         parts.append(
-            f"Scores are from probes that never saw the example's template, at layer "
-            f"{warning['layer']}. The threshold is set on harmless notes. "
-            f"{warning['succeeded']} attacks went on to succeed."
+            f"The probe is fitted on attacks only, to tell those the agent acted on from "
+            f"those it resisted, at layer {warning['layer']}. Scores are from probes that "
+            f"never saw the example's template. The threshold is set by the share of "
+            f"resisted attacks it flags. The agent acted on {warning['acted']} attacks and "
+            f"{warning['succeeded']} succeeded. The last two columns are harmless text, "
+            f"which the probe was never fitted on."
         )
         parts.append(
             table(
-                ["Harmless notes flagged", "Attacks flagged", "Attacks that succeeded, flagged"],
+                [
+                    "Resisted attacks flagged",
+                    "Acted-on attacks flagged",
+                    "Successful attacks flagged",
+                    "Plain notes flagged",
+                    "Near-misses flagged",
+                ],
                 [
                     [
-                        f"{100 * p['false_alarm_rate']:.0f}%",
-                        f"{100 * p['attacks_flagged']:.0f}%",
-                        f"{100 * p['successful_attacks_flagged']:.0f}%",
+                        f"{100 * p['resisted_flagged']:.0f}%",
+                        f"{100 * p['acted_flagged']:.0f}%",
+                        f"{100 * p['succeeded_flagged']:.0f}%",
+                        f"{100 * p['plain_notes_flagged']:.0f}%",
+                        "n/a"
+                        if p["near_misses_flagged"] != p["near_misses_flagged"]
+                        else f"{100 * p['near_misses_flagged']:.0f}%",
                     ]
                     for p in warning["points"]
                 ],

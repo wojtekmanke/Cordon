@@ -52,7 +52,7 @@ def test_bench_report_compares_a_defence_with_the_baseline_on_the_same_cases():
     }
     assert "100% (100-100)" in lines["`none`"] and "| 12 |" in lines["`none`"]
     assert "0% (0-0)" in lines["`grounding`"] and "100% (100-100)" in lines["`grounding`"]
-    assert "3/3" in lines["`none`"]
+    assert "3/3" in lines["`none`"] and "not run" in lines["`none`"]
 
 
 def test_table_is_markdown():
@@ -98,9 +98,10 @@ def test_interp_report_renders_a_probe_result():
         "counts": {"examples": 10, "injected": 6, "attempted": 2, "succeeded": 1},
         "sweep": {k: [{"layer": 1, "auroc": 0.6}, {"layer": 2, "auroc": 0.9}] for k in ("injected", "attempted")},
         "compare": {k: {"layer": 2, "splits": splits} for k in ("injected", "attempted")},
-        "early_warning": {"layer": 2, "succeeded": 1, "points": [
-            {"false_alarm_rate": 0.05, "attacks_flagged": 0.5, "successful_attacks_flagged": 1.0}]},
+        "early_warning": {"layer": 2, "acted": 2, "succeeded": 1, "points": [
+            {"resisted_flagged": 0.05, "acted_flagged": 0.5, "succeeded_flagged": 1.0,
+             "plain_notes_flagged": 0.0, "near_misses_flagged": float("nan")}]},
     }  # fmt: skip
     text = interp_report({"x": result})
     assert "| one template | 0.90 (0.80-0.95) | 0.90 (0.80-0.95) |" in text
-    assert "| 5% | 50% | 100% |" in text and "10 decision points" in text
+    assert "| 5% | 50% | 100% | 0% | n/a |" in text and "10 decision points" in text

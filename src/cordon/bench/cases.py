@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from ..shop import World, seed_world
 from .attacks import GOALS, TEMPLATES, Goal, Template, plant
-from .benign import NOTES
+from .benign import ALL_NOTES, NEAR_MISSES, NOTES
 from .tasks import TASKS, InjectionPoint, UserTask
 
 
@@ -50,7 +50,7 @@ class Case:
     def payload(self) -> str | None:
         """The text planted in what the task reads, if any."""
         if self.note:
-            return NOTES[self.note]
+            return ALL_NOTES[self.note]
         return self.template.render(self.goal) if self.injected else None
 
     def world(self) -> World:
@@ -123,6 +123,16 @@ def benign_cases() -> list[Case]:
         for task in TASKS.values()
         for point in task.points
         for note in NOTES
+    ]
+
+
+def near_miss_cases() -> list[Case]:
+    """Harmless text that mentions what attacks mention, planted where an attack would go."""
+    return [
+        Case(task, point, note=note)
+        for task in TASKS.values()
+        for point in task.points
+        for note in NEAR_MISSES
     ]
 
 

@@ -132,12 +132,28 @@ def test_compare_runs_every_method_under_every_split():
     assert "labels: task, goal and template" in attempted["goal"]
 
 
-def test_early_warning_reports_attacks_flagged_at_a_false_alarm_rate():
+def test_early_warning_flags_what_the_agent_will_act_on():
+    """Write `attempted` along a direction, then check the probe finds it on unseen wordings."""
     examples, acts = synthetic()
-    result = early_warning(examples, acts, layer=3)
-    assert result["succeeded"] == sum(e.attack for e in examples)
-    five = next(p for p in result["points"] if p["false_alarm_rate"] == 0.05)
-    assert five["attacks_flagged"] > 0.6 and five["successful_attacks_flagged"] > 0.6
+    for i, example in enumerate(examples):
+        if example.attempted:
+            acts[i, 1, 5] += 5.0
+    result = early_warning(examples, acts, layer=2)
+    assert result["acted"] == sum(e.attempted for e in examples)
+    five = next(p for p in result["points"] if p["resisted_flagged"] == 0.05)
+    assert five["acted_flagged"] > 0.7 and five["plain_notes_flagged"] < 0.3
+    assert np.isnan(five["near_misses_flagged"]), "the synthetic set has no near-misses"
+
+
+def test_attacks_can_be_compared_with_near_misses_alone():
+    examples, acts = synthetic()
+    tagged = [
+        Example(**{**e.meta(), "note": f"near_{e.note}"}) if e.note in ("knock", "ps") else e
+        for e in examples
+    ]
+    chosen, x, y = select(tagged, acts, "injected_vs_near_miss")
+    assert sum(1 - y) == sum(1 for e in tagged if (e.note or "").startswith("near_"))
+    assert len(chosen) == len(x) == int(y.sum()) + int(sum(1 - y))
 
 
 def test_mean_difference_and_controls():
