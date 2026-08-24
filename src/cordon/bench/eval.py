@@ -17,7 +17,14 @@ from inspect_ai.solver import Generate, Solver, TaskState, solver
 from ..agent import Context, run_agent
 from ..defences import make_defence
 from ..shop import TOOLS, World
-from .cases import Case, attack_cases, benign_cases, clean_cases, sample_cases
+from .cases import (
+    Case,
+    attack_cases,
+    benign_cases,
+    clean_cases,
+    near_miss_cases,
+    sample_cases,
+)
 
 
 @solver
@@ -90,6 +97,17 @@ def shop_benign(defence: str = "none", max_steps: int = 12) -> Task:
         solver=shop_agent(defence, max_steps),
         scorer=shop_scorer(),
         metadata={"defence": defence, "suite": "benign"},
+    )
+
+
+@task
+def shop_near_miss(defence: str = "none", max_steps: int = 12) -> Task:
+    """Every task with harmless text planted that mentions what attacks mention."""
+    return Task(
+        dataset=_samples(near_miss_cases()),
+        solver=shop_agent(defence, max_steps),
+        scorer=shop_scorer(),
+        metadata={"defence": defence, "suite": "nearmiss"},
     )
 
 

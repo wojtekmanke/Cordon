@@ -135,15 +135,27 @@ def _interp_collect(args: argparse.Namespace) -> None:
 
     import numpy as np
 
-    from .interp.dataset import examples_from_logs, save
+    from .interp.dataset import examples_from_logs, load, save
 
     backend = _backend(args.model)
     paths = sorted(glob.glob(f"{args.logs}/*.eval"))
     examples, skipped = examples_from_logs(paths, backend.render)
     print(f"{len(examples)} examples; {skipped} runs never read the planted text", flush=True)
     started = time.time()
-    activations = np.stack([backend.hidden(example.prompt) for example in examples])
     out = Path(args.out)
+    # Reuse what an earlier collection already read: the logs are fixed, so the
+    # same case gives the same prompt.
+    known = {}
+    if (out / "examples.jsonl").exists():
+        old_examples, old_activations = load(out)
+        known = {e.id: old_activations[i] for i, e in enumerate(old_examples)}
+    activations = np.stack(
+        [
+            known[example.id] if example.id in known else backend.hidden(example.prompt)
+            for example in examples
+        ]
+    )
+    print(f"read {len(examples) - len(known)} new decision points", flush=True)
     save(out, examples, activations)
     meta = {"model": args.model, "examples": len(examples), "never_read": skipped}
     (out / "meta.json").write_text(json.dumps(meta, indent=2) + "\n")
@@ -160,17 +172,20 @@ def _interp_probe(args: argparse.Namespace) -> None:
     examples, acts = load(directory)
     meta = json.loads((directory / "meta.json").read_text())
     result = {**meta, "layers": acts.shape[1], "width": acts.shape[2], "sweep": {}, "compare": {}}
-    for label in ("injected", "attempted"):
+    near = [e for e in examples if (e.note or "").startswith("near_")]
+    labels = ["injected", "attempted"] + (["injected_vs_near_miss"] if near else [])
+    for label in labels:
         sweep = layer_sweep(examples, acts, label)
         result["sweep"][label] = sweep
         # The layer is picked on held-out templates, then judged on the other splits too.
         layer = args.layer or max(sweep, key=lambda row: row["auroc"])["layer"]
         result["compare"][label] = {"layer": layer, "splits": compare(examples, acts, label, layer)}
         print(f"{label}: layer {layer}", flush=True)
-    result["early_warning"] = early_warning(examples, acts, result["compare"]["injected"]["layer"])
+    result["early_warning"] = early_warning(examples, acts, result["compare"]["attempted"]["layer"])
     result["counts"] = {
         "examples": len(examples),
         "injected": sum(e.injected for e in examples),
+        "near_misses": len(near),
         "attempted": sum(e.attempted for e in examples),
         "succeeded": sum(e.attack for e in examples),
     }
