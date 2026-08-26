@@ -92,15 +92,36 @@ def groups(examples: Sequence[Example], by: str) -> np.ndarray:
     return np.array([str(getattr(e, by)) if e.injected else of_note[e.note] for e in examples])
 
 
-def held_out_scores(x: np.ndarray, y: np.ndarray, group: np.ndarray, fit: Fitter) -> np.ndarray:
-    """Score every example with a model that never saw its group."""
+def held_out_scores(
+    x: np.ndarray,
+    y: np.ndarray,
+    group: np.ndarray,
+    fit: Fitter,
+    train_labels: np.ndarray | None = None,
+) -> np.ndarray:
+    """Score every example with a model that never saw its group.
+
+    `train_labels`, if given, are fitted in place of `y`: used for controls
+    that train on scrambled labels and are judged against the real ones.
+    """
+    fitted = y if train_labels is None else train_labels
     scores = np.full(len(y), np.nan)
     for name in np.unique(group):
         test = group == name
-        if len(np.unique(y[~test])) < 2:
+        if len(np.unique(fitted[~test])) < 2:
             continue
-        scores[test] = fit(x[~test], y[~test])(x[test])
+        scores[test] = fit(x[~test], fitted[~test])(x[test])
     return scores
+
+
+def shuffled_within(y: np.ndarray, block: np.ndarray, seed: int = 0) -> np.ndarray:
+    """Labels permuted inside each block, so each block keeps its share of positives."""
+    rng = np.random.default_rng(seed)
+    out = y.copy()
+    for name in np.unique(block):
+        members = np.flatnonzero(block == name)
+        out[members] = y[rng.permutation(members)]
+    return out
 
 
 @dataclass(frozen=True)

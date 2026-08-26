@@ -17,6 +17,7 @@ from cordon.interp.probes import (  # noqa: E402
     logistic,
     mean_difference,
     random_like,
+    shuffled_within,
 )
 
 TEMPLATES = ["direct", "ignore_previous", "system_notice"]
@@ -175,3 +176,22 @@ def test_dataset_round_trips(tmp_path):
     loaded, stored = load(tmp_path)
     assert [e.id for e in loaded] == [e.id for e in examples] and loaded[0].prompt == ""
     assert stored.shape == acts.shape and np.allclose(stored, acts, atol=1e-2)
+
+
+def test_shuffling_within_blocks_keeps_each_block_s_share_of_positives():
+    y = np.array([1, 1, 0, 0, 0, 1, 0, 0, 0, 0])
+    block = np.array(["a"] * 5 + ["b"] * 5)
+    shuffled = shuffled_within(y, block, seed=3)
+    assert shuffled[:5].sum() == 2 and shuffled[5:].sum() == 1
+    assert not np.array_equal(shuffled, y)
+
+
+def test_the_shuffled_control_is_reported_for_the_compliance_question():
+    examples, acts = synthetic()
+    result = compare(examples, acts, "attempted", layer=3)
+    control = result["template"]["control: probe, labels shuffled within task"]
+    assert 0.3 < control["auroc"] < 0.7
+    assert (
+        "control: probe, labels shuffled within task"
+        not in compare(examples, acts, "injected", layer=3)["template"]
+    )

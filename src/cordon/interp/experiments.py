@@ -23,6 +23,7 @@ from .probes import (
     logistic,
     mean_difference,
     one_hot,
+    shuffled_within,
     text_ngrams,
 )
 
@@ -78,12 +79,20 @@ def compare(
     if label == "attempted":
         fields = ("task", "goal", "template")
         methods["labels: task, goal and template"] = (one_hot(chosen, fields), logistic(1.0))
+    # A control for the compliance question. Some tasks are obeyed far more often
+    # than others, and the activations surely say which task this is. Scrambling
+    # the labels inside each task leaves that route open and closes every other.
+    scrambled = None
+    if label == "attempted":
+        methods["control: probe, labels shuffled within task"] = (x, logistic())
+        scrambled = shuffled_within(y, np.array([e.task for e in chosen]))
     out: dict[str, dict[str, Any]] = {}
     for by in SPLITS:
         group = groups(chosen, by)
         out[by] = {}
         for name, (features, fit) in methods.items():
-            scores = held_out_scores(features, y, group, fit)
+            train = scrambled if name.startswith("control:") else None
+            scores = held_out_scores(features, y, group, fit, train)
             result = auroc(y, scores)
             out[by][name] = {
                 "auroc": result.value,
