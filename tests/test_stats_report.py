@@ -2,7 +2,7 @@ import math
 
 from cordon.report import bench_report, fleet_report, interp_report, monitor_report, table
 from cordon.run import read_rows, slug, write_rows
-from cordon.stats import clustered, rate, wilson
+from cordon.stats import clustered, paired_change, rate, wilson
 
 
 def test_wilson_matches_known_values():
@@ -105,3 +105,17 @@ def test_interp_report_renders_a_probe_result():
     text = interp_report({"x": result})
     assert "| one template | 0.90 (0.80-0.95) | 0.90 (0.80-0.95) |" in text
     assert "| 5% | 50% | 100% | 0% | n/a |" in text and "10 decision points" in text
+
+
+def test_paired_change_is_tighter_than_two_separate_intervals():
+    # Ten tasks; in every task the defence stops exactly one of four attacks.
+    before, after, tasks = [], [], []
+    for t in range(10):
+        wins = 1 + t % 3
+        before += [1] * wins + [0] * (4 - wins)
+        after += [1] * (wins - 1) + [0] * (5 - wins)
+        tasks += [f"t{t}"] * 4
+    change = paired_change(before, after, tasks)
+    assert change.value == -0.25 and change.low == change.high == -0.25
+    assert str(change) == "-25 (-25 to -25)"
+    assert str(paired_change([], [], [])) == "n/a"

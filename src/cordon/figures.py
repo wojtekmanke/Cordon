@@ -48,6 +48,9 @@ DEFENCE_NAMES = {
     "least_privilege": "Least privilege",
     "taint": "Taint",
     "grounding": "Grounding",
+    "ablate-comply": "Ablate compliance direction",
+    "ablate-random": "Ablate random direction",
+    "steer-against-comply": "Steer against compliance",
 }
 
 

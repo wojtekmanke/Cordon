@@ -241,7 +241,11 @@ def load_events(paths: Iterable[str]) -> tuple[list[Event], dict[str, int]]:
     events: list[Event] = []
     counts = {"honest": 0, "attacked": 0, "succeeded": 0}
     for path in paths:
-        log = read_eval_log(path)
+        try:
+            log = read_eval_log(path)
+        except Exception as err:  # a log still being written cannot be opened
+            print(f"skipped {path}: {type(err).__name__}", flush=True)
+            continue
         args = log.eval.task_args or {}
         if args.get("defence", "none") != "none" or log.status != "success":
             continue
