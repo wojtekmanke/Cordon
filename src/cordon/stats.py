@@ -82,3 +82,46 @@ def rate(rows: Iterable[dict], key: str, cluster: str | None = None) -> Rate:
     if cluster is None:
         return wilson(int(sum(values)), len(values))
     return clustered(values, [str(row[cluster]) for row in rows])
+
+
+@dataclass(frozen=True)
+class Change:
+    """A difference between two rates measured on the same cases, in percentage points."""
+
+    value: float
+    low: float
+    high: float
+    n: int
+
+    def __str__(self) -> str:
+        if not self.n:
+            return "n/a"
+        return f"{100 * self.value:+.0f} ({100 * self.low:+.0f} to {100 * self.high:+.0f})"
+
+
+def paired_change(
+    before: Sequence[float],
+    after: Sequence[float],
+    clusters: Sequence[str],
+    draws: int = 2000,
+    seed: int = 0,
+) -> Change:
+    """`after` minus `before`, case by case, with an interval from resampling whole clusters.
+
+    Pairing removes the variation between cases, which is most of the
+    variation there is: the same case is run under both conditions.
+    """
+    if not before:
+        return Change(float("nan"), float("nan"), float("nan"), 0)
+    groups: dict[str, list[float]] = defaultdict(list)
+    for a, b, cluster in zip(before, after, clusters, strict=True):
+        groups[cluster].append(b - a)
+    names = sorted(groups)
+    rng = random.Random(seed)
+    means = []
+    for _ in range(draws):
+        picked = [d for name in rng.choices(names, k=len(names)) for d in groups[name]]
+        means.append(sum(picked) / len(picked))
+    means.sort()
+    value = (sum(after) - sum(before)) / len(before)
+    return Change(value, means[int(0.025 * draws)], means[int(0.975 * draws) - 1], len(before))
