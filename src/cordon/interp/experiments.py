@@ -75,6 +75,11 @@ def compare(
         "probe: logistic regression": (x, logistic()),
         "probe: difference of means": (x, mean_difference()),
         "text: character n-grams": (index, text_ngrams([e.planted for e in chosen])),
+        # Attacks are longer than notes. If length alone separates them, say so.
+        "text: length only": (
+            np.array([[float(len(e.planted))] for e in chosen]),
+            logistic(1.0),
+        ),
     }
     if label == "attempted":
         fields = ("task", "goal", "template")
