@@ -230,12 +230,16 @@ def operating_points(
 # --- reading recorded runs --------------------------------------------------
 
 
-def load_events(paths: Iterable[str]) -> tuple[list[Event], dict[str, int]]:
+def load_events(
+    paths: Iterable[str], only: Iterable[str] = ()
+) -> tuple[list[Event], dict[str, int]]:
     """Events from Inspect logs of undefended runs, and how many runs of each kind there were.
 
     Runs made with a defence are skipped: a monitor is judged on what the
-    agents do when nothing else stops them.
+    agents do when nothing else stops them. `only` keeps the logs whose task
+    name contains one of the given words, for example `clean` and `insider`.
     """
+    only = tuple(only)
     from inspect_ai.log import read_eval_log
 
     events: list[Event] = []
@@ -248,6 +252,8 @@ def load_events(paths: Iterable[str]) -> tuple[list[Event], dict[str, int]]:
             continue
         args = log.eval.task_args or {}
         if args.get("defence", "none") != "none" or log.status != "success":
+            continue
+        if only and not any(word in log.eval.task for word in only):
             continue
         run = "/".join(
             [log.eval.task.split("/")[-1], str(args.get("arm", "single"))]

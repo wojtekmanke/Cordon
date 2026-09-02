@@ -54,6 +54,9 @@ DEFENCE_NAMES = {
 }
 
 
+MONITOR_ORDER = ["ungrounded", "llm-7b+reads", "llm-7b", "llm-1.5b", "llm-1.5b+reads", "tainted"]
+
+
 def _axes(theme: dict[str, Any], width: float, height: float, columns: int = 1, **kwargs):
     import matplotlib
 
@@ -182,8 +185,8 @@ def sweep_figure(result: dict[str, Any], theme: dict[str, Any]):
         ends.append((sweep[-1]["auroc"], name))
     last = result["layers"]
     axis.axhline(0.5, color=theme["axis"], lw=0.8)
-    axis.annotate("chance", (1, 0.5), xytext=(0, 3), textcoords="offset points",
-                  color=theme["muted"], fontsize=8)  # fmt: skip
+    axis.annotate("chance", (last, 0.5), xytext=(8, 0), textcoords="offset points", va="center",
+                  color=theme["muted"], fontsize=8.5)  # fmt: skip
     # Label each line where it ends, nudged apart if the ends are close.
     ends.sort()
     if len(ends) == 2 and ends[1][0] - ends[0][0] < 0.035:
@@ -209,8 +212,12 @@ def monitor_figure(counts: dict[str, int], rows: list[dict[str, Any]], theme: di
     from .monitor import operating_points
 
     figure, axis = _axes(theme, 6.4, 3.6)
-    monitors = sorted(group(rows, "monitor").items())[:4]
-    for index, (name, scored) in enumerate(monitors):
+    by_name = group(rows, "monitor")
+    # A fixed order, so a monitor keeps its colour whichever others are present.
+    order = [name for name in MONITOR_ORDER if name in by_name]
+    order += sorted(name for name in by_name if name not in MONITOR_ORDER)
+    for index, name in enumerate(order[:4]):
+        scored = by_name[name]
         colour = theme["series"][index]
         points = [p for p in operating_points(scored, counts["attacked"]) if p.caught == p.caught]
         points.sort(key=lambda p: (p.audit_rate, p.caught))

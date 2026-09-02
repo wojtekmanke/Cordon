@@ -101,7 +101,8 @@ def _monitor(args: argparse.Namespace) -> None:
     )
     from .run import write_rows
 
-    events, counts = load_events(sorted(glob.glob(f"{args.logs}/*.eval")))
+    only = args.only.split(",") if args.only else ()
+    events, counts = load_events(sorted(glob.glob(f"{args.logs}/*.eval")), only)
     if args.kind in ("llm", "llm+reads"):
         if not args.model:
             raise SystemExit("--model is required for an LLM monitor")
@@ -281,6 +282,7 @@ def main() -> None:
         "--kind", required=True, choices=["llm", "llm+reads", "ungrounded", "tainted"]
     )
     monitor.add_argument("--model", help="the monitor model, for the LLM kinds")
+    monitor.add_argument("--only", help="keep logs whose task name contains one of these words")
     monitor.set_defaults(run=_monitor)
 
     interp = commands.add_parser("interp", help="probe a model's activations")
