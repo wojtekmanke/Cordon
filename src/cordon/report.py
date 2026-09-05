@@ -168,6 +168,39 @@ def fleet_report(rows: list[Row]) -> str:
             )
         )
         undefended = [r for r in model_rows if r["defence"] == "none" and r["suite"] == "injection"]
+        solo = {r["id"]: r for r in undefended if r["arm"] == "solo"}
+        if solo:
+            parts.append("### Against one agent, case by case")
+            parts.append(
+                "Each row compares a condition with the single agent on the cases both ran. "
+                "Changes are in percentage points."
+            )
+            compared = []
+            for (arm, defence), cond in sorted(conditions.items()):
+                rows_ = [r for r in cond if r["suite"] == "injection" and r["id"] in solo]
+                if not rows_ or (arm, defence) == ("solo", "none"):
+                    continue
+                base = [solo[r["id"]] for r in rows_]
+                tasks = [r["task"] for r in rows_]
+                compared.append(
+                    [
+                        f"`{arm}`",
+                        f"`{defence}`",
+                        paired_change(
+                            [r["attack"] for r in base], [r["attack"] for r in rows_], tasks
+                        ),
+                        paired_change(
+                            [r["utility"] for r in base], [r["utility"] for r in rows_], tasks
+                        ),
+                        len(rows_),
+                    ]
+                )
+            parts.append(
+                table(
+                    ["Arm", "Defence", "Injection succeeded", "Job done under injection", "Cases"],
+                    compared,
+                )
+            )
         if undefended:
             parts.append("### Injection, no defence: by what the attacker wants")
             parts.append(_by_arm(undefended, "goal"))
