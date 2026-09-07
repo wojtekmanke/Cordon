@@ -79,3 +79,25 @@ def test_subset_is_drawn_from_the_full_matrix():
     ids = {s.id for s in shop_attacks(cases=25).dataset}
     assert len(ids) == 25 and ids <= {c.id for c in attack_cases()}
     assert len(TEMPLATES) == 7
+
+
+def test_a_labelled_run_covers_every_suite(tmp_path, monkeypatch):
+    """The label names the records; it must not replace the defence on the second suite."""
+    import sys
+
+    from cordon import cli
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        "cordon bench --model scripted/gullible --defence grounding --suite clean,attacks "
+        "--cases 12 --label relabelled --log-dir logs".split(),
+    )
+    cli.main()
+    written = sorted(p.name for p in (tmp_path / "results" / "bench" / "gullible").iterdir())
+    assert written == ["relabelled.attacks.jsonl", "relabelled.clean.jsonl"]
+    import json
+
+    rows = [json.loads(line) for line in open(tmp_path / "results/bench/gullible" / written[0])]
+    assert {r["defence"] for r in rows} == {"relabelled"} and not any(r["attack"] for r in rows)
