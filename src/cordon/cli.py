@@ -41,13 +41,13 @@ def _bench(args: argparse.Namespace) -> None:
                 model_args=model_args,
                 label=args.label,
             )
-            defence = args.label or defence
-            out = RESULTS / "bench" / slug(args.model) / f"{defence}.{suite}.jsonl"
+            name = args.label or defence
+            out = RESULTS / "bench" / slug(args.model) / f"{name}.{suite}.jsonl"
             write_rows(out, rows)
             utility = sum(r["utility"] for r in rows) / len(rows)
             attack = sum(r["attack"] for r in rows) / len(rows)
             print(
-                f"{defence:28s} {suite:8s} n={len(rows):4d} utility={utility:.2f} "
+                f"{name:28s} {suite:8s} n={len(rows):4d} utility={utility:.2f} "
                 f"attack={attack:.2f} {time.time() - started:6.0f}s -> {out}",
                 flush=True,
             )
