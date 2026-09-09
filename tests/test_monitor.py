@@ -8,9 +8,11 @@ from cordon.monitor import (
     events_of,
     llm_monitor,
     operating_points,
+    read_set,
     score_events,
     tainted_monitor,
     ungrounded_monitor,
+    write_set,
 )
 from cordon.shop import call_tool
 from cordon.shop.world import Message
@@ -99,3 +101,23 @@ def test_operating_points_trade_audit_load_against_attacks_caught():
     assert points[9.0].uncaught_success == 0.0
     # Above every score nothing is flagged: one of four attack runs succeeds unseen.
     assert points[10.0].caught == 0.0 and points[10.0].uncaught_success == 0.25
+
+
+def test_a_set_stores_events_once_and_scores_per_monitor(tmp_path):
+    case, world = attacked_run()
+    events = events_of("r", case, world, True)
+    counts = {"honest": 0, "attacked": 1, "succeeded": 1}
+    for name, monitor in [("ungrounded", ungrounded_monitor), ("tainted", tainted_monitor)]:
+        rows = asyncio.run(score_events(events, monitor))
+        for row in rows:
+            row["id"] = f"{row['run']}/{row['case']}/{row['index']:02d}"
+            row["monitor"] = name
+        write_set(tmp_path, name, rows, counts)
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "counts.json", "events.jsonl", "tainted.jsonl", "ungrounded.jsonl",
+    ]  # fmt: skip
+    assert "summary" not in (tmp_path / "tainted.jsonl").read_text()
+    stored, rows = read_set(tmp_path)
+    assert stored == counts and len(rows) == 2 * len(events)
+    assert {r["monitor"] for r in rows} == {"ungrounded", "tainted"}
+    assert all("summary" in r and "score" in r for r in rows)

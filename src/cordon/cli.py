@@ -87,7 +87,6 @@ def _fleet(args: argparse.Namespace) -> None:
 def _monitor(args: argparse.Namespace) -> None:
     import asyncio
     import glob
-    import json
 
     from inspect_ai.model import get_model
 
@@ -98,8 +97,8 @@ def _monitor(args: argparse.Namespace) -> None:
         score_events,
         tainted_monitor,
         ungrounded_monitor,
+        write_set,
     )
-    from .run import write_rows
 
     only = args.only.split(",") if args.only else ()
     events, counts = load_events(sorted(glob.glob(f"{args.logs}/*.eval")), only)
@@ -115,8 +114,7 @@ def _monitor(args: argparse.Namespace) -> None:
         row["id"] = f"{row['run']}/{row['case']}/{row['index']:02d}"
         row["monitor"] = args.name
     out = RESULTS / "monitor" / args.set
-    write_rows(out / f"{args.name}.jsonl", rows)
-    (out / "counts.json").write_text(json.dumps(counts, indent=1) + "\n")
+    write_set(out, args.name, rows, counts)
     print(f"wrote {len(rows)} scored events to {out}/{args.name}.jsonl in "
           f"{time.time() - started:.0f}s; runs: {counts}", flush=True)  # fmt: skip
 
