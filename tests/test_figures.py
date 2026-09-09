@@ -7,6 +7,7 @@ import pytest
 pytest.importorskip("matplotlib")
 
 from cordon.figures import write_figures  # noqa: E402
+from cordon.monitor import write_set  # noqa: E402
 from cordon.run import write_rows  # noqa: E402
 
 
@@ -53,9 +54,8 @@ def test_every_figure_is_written_for_light_and_dark(tmp_path):
                 "attack_succeeded": attacked,
             }  # fmt: skip
         )
-    write_rows(results / "monitor" / "set" / "llm.jsonl", events)
     counts = {"honest": 12, "attacked": 8, "succeeded": 8}
-    (results / "monitor" / "set" / "counts.json").write_text(json.dumps(counts))
+    write_set(results / "monitor" / "set", "llm", events, counts)
 
     written = write_figures(results, tmp_path / "figures")
     names = sorted(path.name for path in written)

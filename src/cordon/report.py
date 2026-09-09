@@ -399,11 +399,10 @@ def write_reports(results: Path, out: Path) -> list[Path]:
     if (results / "fleet").exists():
         write("fleet.md", fleet_report(read_rows(results / "fleet")))
     if (results / "monitor").exists():
-        sets = {}
-        for directory in sorted(p for p in (results / "monitor").iterdir() if p.is_dir()):
-            counts = json.loads((directory / "counts.json").read_text())
-            sets[directory.name] = (counts, read_rows(directory))
-        write("monitor.md", monitor_report(sets))
+        from .monitor import read_set
+
+        directories = sorted(p for p in (results / "monitor").iterdir() if p.is_dir())
+        write("monitor.md", monitor_report({d.name: read_set(d) for d in directories}))
     if (results / "interp").exists():
         probes = {
             path.parent.name: json.loads(path.read_text())

@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .monitor import read_set
 from .report import group
 from .run import read_rows
 from .stats import rate
@@ -262,8 +263,7 @@ def write_figures(results: Path, out: Path) -> list[Path]:
         save(f"probes-{path.parent.name}", lambda theme, r=result: sweep_figure(r, theme))
     for directory in sorted(results.glob("monitor/*")):
         if directory.is_dir():
-            counts = json.loads((directory / "counts.json").read_text())
-            rows = read_rows(directory)
+            counts, rows = read_set(directory)
             if counts["succeeded"]:
                 save(
                     f"monitors-{directory.name}",

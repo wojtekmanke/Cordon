@@ -18,6 +18,7 @@ import json
 import re
 from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Any
 
 from inspect_ai.model import GenerateConfig, Model
@@ -267,3 +268,41 @@ def load_events(
             counts["succeeded"] += won
             events += events_of(run, case, world, won)
     return events, counts
+
+
+# --- records on disk --------------------------------------------------------
+
+_SCORE_KEYS = ("id", "monitor", "score")
+
+
+def write_set(directory: Path, name: str, rows: list[dict[str, Any]], counts: dict) -> None:
+    """Save one monitor's scores for a set of runs.
+
+    The events themselves are the same whichever monitor scored them, so they
+    are stored once, in `events.jsonl`; each monitor's file holds only its
+    scores.
+    """
+    directory.mkdir(parents=True, exist_ok=True)
+    rows = sorted(rows, key=lambda row: row["id"])
+    with (directory / "events.jsonl").open("w") as out:
+        for row in rows:
+            facts = {k: v for k, v in row.items() if k not in ("monitor", "score")}
+            out.write(json.dumps(facts, sort_keys=True) + "\n")
+    with (directory / f"{name}.jsonl").open("w") as out:
+        for row in rows:
+            out.write(json.dumps({k: row[k] for k in _SCORE_KEYS}, sort_keys=True) + "\n")
+    (directory / "counts.json").write_text(json.dumps(counts, indent=1) + "\n")
+
+
+def read_set(directory: Path) -> tuple[dict[str, int], list[dict[str, Any]]]:
+    """Every monitor's scored events for a set of runs, joined back to the events."""
+
+    def lines(path: Path) -> list[dict[str, Any]]:
+        return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+
+    events = {row["id"]: row for row in lines(directory / "events.jsonl")}
+    rows = []
+    for path in sorted(directory.glob("*.jsonl")):
+        if path.name != "events.jsonl":
+            rows += [{**events[score["id"]], **score} for score in lines(path)]
+    return json.loads((directory / "counts.json").read_text()), rows
