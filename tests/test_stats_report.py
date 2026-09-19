@@ -52,7 +52,7 @@ def test_bench_report_compares_a_defence_with_the_baseline_on_the_same_cases():
     }
     assert "100% (100-100)" in lines["`none`"] and "| 12 |" in lines["`none`"]
     assert "0% (0-0)" in lines["`grounding`"] and "100% (100-100)" in lines["`grounding`"]
-    assert "3/3" in lines["`none`"] and "not run" in lines["`none`"]
+    assert "3/3" in lines["`none`"] and lines["`none`"].count("not run") == 2
 
 
 def test_table_is_markdown():

@@ -68,11 +68,13 @@ def _headline(rows: list[Row]) -> str:
         attacks = [r for r in by_defence[defence] if r["suite"] == "attacks"]
         same = [baseline[r["id"]] for r in attacks if r["id"] in baseline]
         benign = [r for r in by_defence[defence] if r["suite"] == "benign"]
+        near = [r for r in by_defence[defence] if r["suite"] == "nearmiss"]
         out.append(
             [
                 f"`{defence}`",
                 f"{sum(r['utility'] for r in clean)}/{len(clean)}" if clean else "n/a",
                 rate(benign, "utility", "task") if benign else "not run",
+                rate(near, "utility", "task") if near else "not run",
                 rate(attacks, "utility", "task"),
                 rate(attacks, "attack", "task"),
                 rate(same, "attack", "task") if defence != "none" else "",
@@ -92,6 +94,7 @@ def _headline(rows: list[Row]) -> str:
             "Defence",
             "Clean tasks solved",
             "Solved with a harmless note planted",
+            "Solved with a near-miss note planted",
             "Tasks solved under attack",
             "Attack succeeded",
             "No defence, same cases",
