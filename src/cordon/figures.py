@@ -52,6 +52,7 @@ DEFENCE_NAMES = {
     "ablate-comply": "Ablate compliance direction",
     "ablate-random": "Ablate random direction",
     "steer-against-comply": "Steer against compliance",
+    "steer-random": "Steer along a random direction",
 }
 
 
