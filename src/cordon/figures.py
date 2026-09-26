@@ -121,17 +121,26 @@ def _legend(axis, theme) -> None:
 def defence_figure(rows: list[dict[str, Any]], theme: dict[str, Any]):
     """Attack success and task success for each defence, with intervals."""
     by_defence = group(rows, "defence")
+    # Defences run on a subset of the cases. Compare like with like: the
+    # undefended row is drawn from the same cases.
+    shared = {r["id"] for name, cell in by_defence.items() if name != "none" for r in cell} or None
     entries = []
+    cases = 0
     for name, cell in by_defence.items():
         if name not in DEFENCE_NAMES:
             continue
-        attacks = [r for r in cell if r["suite"] == "attacks"]
+        attacks = [
+            r
+            for r in cell
+            if r["suite"] == "attacks" and (name != "none" or shared is None or r["id"] in shared)
+        ]
         if attacks:
+            cases = max(cases, len(attacks))
             entries.append(
                 (name, rate(attacks, "attack", "task"), rate(attacks, "utility", "task"))
             )
     entries.sort(key=lambda e: (e[0] == "none", e[1].value))
-    figure, (left, right) = _axes(theme, 8.4, 0.42 * len(entries) + 1.3, 2, sharey=True)
+    figure, (left, right) = _axes(theme, 8.4, 0.42 * len(entries) + 1.6, 2, sharey=True)
     colour = theme["series"][0]
     panels = [
         (left, 1, "Attack succeeded", 0.0),
@@ -161,7 +170,15 @@ def defence_figure(rows: list[dict[str, Any]], theme: dict[str, Any]):
     left.set_yticks(range(len(entries)), [DEFENCE_NAMES[e[0]] for e in entries])
     left.tick_params(axis="y", colors=theme["ink"], labelsize=9)
     left.set_ylim(-0.6, len(entries) - 0.4)
-    figure.tight_layout(w_pad=2.5)
+    figure.tight_layout(w_pad=2.5, rect=(0, 0.045, 1, 1))
+    figure.text(
+        0.012,
+        0.018,
+        f"{cases} attack cases per row, the same cases in every row. "
+        "Lines are 95% intervals from resampling whole tasks.",
+        color=theme["muted"],
+        fontsize=8,
+    )
     return figure
 
 
