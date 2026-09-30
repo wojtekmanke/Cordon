@@ -78,7 +78,12 @@ passed its tests, and it was wrong.
 It checks where a target came from, not whether acting on it is right. If the
 operator asks about customer C-103's orders, then C-103's orders are in
 trusted data, and an injection asking to reroute one of them is not stopped.
-The results break this out.
+That is the one attack that got past it in the results, with one agent and
+with four.
+
+It also blocks things no attacker caused. In clean runs the 7B model
+sometimes adds a tracking link it has made up to a reply; the link is in no
+trusted source, so the reply is blocked.
 
 ## In the fleet, trust belongs to text and not to agents
 
@@ -149,3 +154,8 @@ argument. The benchmark then runs unchanged, and the steered model gets a row
 in the same table as every other defence: attack success, tasks solved, on
 the same cases. The direction is fitted on cases outside the evaluation
 subset, and a random direction of the same length is run as the control.
+
+The control earned its place. Pushing against the fitted direction cut attack
+success by 11 points, which would have read as a result. A random direction
+cut it by 12. Equal length is still not equal strength, and the roadmap has
+the version of this experiment that controls for that.

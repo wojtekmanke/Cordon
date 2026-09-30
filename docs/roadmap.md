@@ -21,9 +21,11 @@ Status as of 2026-10-12, the day the first version was written.
 
 - 11 tasks, each with a reference plan that proves it solvable.
 - 6 attacker goals, 7 wordings, 12 injection points: 504 attack cases.
-- 252 benign cases: harmless text planted where an attack would go.
+- 396 negative cases: harmless notes, and near-miss notes that mention what
+  attacks mention, planted where an attack would go.
 - 8 defences acting on the prompt, the text or the action.
-- First results on a 7B model. See `results/bench.md`.
+- Results on a 7B model: the baseline on all 504 cases, each defence on a
+  fixed 168-case subset. See `results/bench.md`.
 
 **Track 2: fleet control evaluation**
 
@@ -31,16 +33,31 @@ Status as of 2026-10-12, the day the first version was written.
 - Taint and provenance that follow requests and answers between agents.
 - Injection and insider threats.
 - Monitors scored offline, judged at a fixed audit rate.
-- First results on a 14B model. See `results/fleet.md`.
+- Results on a 14B model, 72 stratified cases per arm, and monitors scored
+  over the 7B and 14B runs. See `results/fleet.md` and `results/monitor.md`.
 
 **Track 3: probing**
 
 - Activations read at the moment an agent has read planted text.
-- Probes scored only on held-out wordings, goals and tasks, against
-  baselines that read the text alone.
+- Probes scored only on held-out wordings, goals and tasks, against text,
+  length and label baselines and a shuffled-label control.
 - Steering along a probe direction, run through the benchmark like any other
-  defence.
-- First results on the 7B model. See `results/interp.md`.
+  defence, with random-direction controls.
+- Results on the 7B model. See `results/interp.md`.
+
+## What the first results changed
+
+Three items below were added or moved up because of what the first runs
+showed.
+
+- The attack-against-note probe is not a hard enough question. Length alone
+  separates the classes and a layer-1 probe nearly matches the best layer.
+  Item 4 is the fix.
+- Steering along the compliance direction was matched by a random direction
+  of the same length, which is a much larger push in terms of natural
+  variation. Item 5 is the proper experiment.
+- In the fleet, the weak point was a rule an agent could not check. Item 6
+  follows from that.
 
 ## Next: what would most change the conclusions
 
@@ -76,6 +93,29 @@ defence existed. That measures the defence against a lazy attacker.
 - A second open model family, to see which findings are about Qwen.
 - A stronger trusted model, and the same model as its own monitor, to
   separate "the monitor is weak" from "the signal is not there".
+
+### 4. Negatives that make the probing question hard
+
+- Notes matched to attacks in length, and notes that are themselves
+  instructions the agent should follow because they fit the operator's
+  request. Only then does "attack or not" ask about more than vocabulary.
+- A sentence-embedding baseline, which is the fair text-only competitor for a
+  probe on a model's own activations.
+
+### 5. Steering done properly
+
+- A dose-response curve: several magnitudes, each with random directions
+  matched in standard deviations of natural variation, not in length.
+- Directions fitted at the token where a tool call's name is produced, where
+  the decision to act is made, and not only where the reply begins.
+
+### 6. Provenance for requests between agents
+
+- A request is ungrounded if it names an order, address or code that the
+  sending agent only ever saw in outsider-written text. The check exists for
+  tool calls; it should exist for messages.
+- Carry the origin of a request with it, so the receiving agent is told "this
+  came from a ticket" and can apply its own rule.
 
 ## Later
 
