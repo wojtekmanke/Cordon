@@ -15,7 +15,7 @@ jobs:
       # No model weights and no GPU here: the tests run on scripted models,
       # synthetic activations and tiny randomly initialised networks. Tests
       # that need MLX or PyTorch skip themselves when those are not installed.
-      - run: pip install -e ".[dev]" scikit-learn
+      - run: pip install -e ".[dev]" scikit-learn matplotlib
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -q

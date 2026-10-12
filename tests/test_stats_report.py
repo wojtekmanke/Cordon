@@ -119,3 +119,15 @@ def test_paired_change_is_tighter_than_two_separate_intervals():
     assert change.value == -0.25 and change.low == change.high == -0.25
     assert str(change) == "-25 (-25 to -25)"
     assert str(paired_change([], [], [])) == "n/a"
+
+
+def test_the_code_version_survives_a_machine_without_git(monkeypatch):
+    import subprocess
+
+    from cordon import run
+
+    def missing(*args, **kwargs):
+        raise FileNotFoundError("git")
+
+    monkeypatch.setattr(subprocess, "run", missing)
+    assert run._code_version() == "unknown"
