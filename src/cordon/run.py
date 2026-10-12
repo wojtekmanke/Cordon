@@ -33,7 +33,10 @@ def _code_version() -> str:
     root = Path(__file__).resolve().parents[2]
 
     def git(*args: str) -> str:
-        done = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
+        try:
+            done = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
+        except OSError:  # no git on this machine, as when installed from an archive
+            return ""
         return done.stdout.strip()
 
     commit = git("rev-parse", "--short", "HEAD") or "unknown"
