@@ -1,0 +1,50 @@
+{
+  "description": "Recorded commit IDs mapped to the current history after a metadata-only rewrite. Both commits in each pair were verified to have the same complete file tree. The +changes suffix is preserved and does not identify the uncommitted source changes.",
+  "commits": [
+    {
+      "recorded": "0a6307032160157b22479cb13cb8ad4dcf014ca8",
+      "current": "9f0659642a9b20949a8b2f4e680dad0bcaccbd6b",
+      "tree": "f10c26fc227accc350c490fb9e915b6093d6cd19"
+    },
+    {
+      "recorded": "734335a34e1d4b542f5571bcc90a03d3d33fb4d2",
+      "current": "53ab83ed20b185dbec6c8f88568e311911d6226f",
+      "tree": "10a30d65c2eea9ad474f9a531601462107f43e37"
+    },
+    {
+      "recorded": "7f3890a4f8ebcb9ebe699563d6970dc1dd65868c",
+      "current": "fa2b20db2969872a484798151078d25c0048b4a7",
+      "tree": "f75828f9712e097eeeff0434ca412ae325733fc8"
+    },
+    {
+      "recorded": "9739c503aeff282951ed477b04751d60e3c7170a",
+      "current": "bd4e71526dd76f91834b51c6ed9e20c36b05cf1c",
+      "tree": "dc57d14ba2cac9228587e70d8e2d02adacf73965"
+    },
+    {
+      "recorded": "a9b70d149971bf68034e8b4c13613767a702a0d8",
+      "current": "b4df23fcf8e5b265a5f40f7509195da8e7f8fb04",
+      "tree": "3bd57c764cf16cff02d37a2be538763b252f066b"
+    },
+    {
+      "recorded": "b0a36b565d91e3547c91ce54062fe20f6cc4a664",
+      "current": "94eafda6cb491ca7bdb8ff110ec5eec36d8e8a9c",
+      "tree": "f220f7bb37239568d2fd23d4eb7e71c9b054f925"
+    },
+    {
+      "recorded": "bf623a4090bb831ebfcbd72a8c086a6a1825af12",
+      "current": "4177f2a864029bfbed6d8753d9492f18b95a7691",
+      "tree": "515015e86c41cd4f4d92abb930f4d092e0611772"
+    },
+    {
+      "recorded": "d70c5a99d5ec1110d538090a610a334a60666f31",
+      "current": "f7078cbe4edaefbe0a4d22764285daaead676ac7",
+      "tree": "7e505d6aa7e87b8cc7b9dec0cd035db05e96c73c"
+    },
+    {
+      "recorded": "f4da1b79c99c818850dfaf379f275a870f4c7f00",
+      "current": "cc305cb99fe2ae00ebcbfbc2187993b390bceb91",
+      "tree": "1a4a1cb69e3ada902ad02c5c3b73a58dc876c6fe"
+    }
+  ]
+}

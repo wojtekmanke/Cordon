@@ -29,18 +29,20 @@ def slug(model: str) -> str:
 
 
 def _code_version() -> str:
-    """The commit the code is at, marked if files under src/ had uncommitted changes."""
+    """The full commit ID, marked if files under src/ had uncommitted changes."""
     root = Path(__file__).resolve().parents[2]
 
     def git(*args: str) -> str:
-        try:
-            done = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
-        except OSError:  # no git on this machine, as when installed from an archive
-            return ""
+        done = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, check=True)
         return done.stdout.strip()
 
-    commit = git("rev-parse", "--short", "HEAD") or "unknown"
-    return f"{commit}+changes" if git("status", "--porcelain", "--", "src") else commit
+    try:
+        commit = git("rev-parse", "--verify", "HEAD^{commit}")
+        changes = git("status", "--porcelain", "--untracked-files=all", "--", "src")
+    except (OSError, subprocess.CalledProcessError):
+        # No Git, no commit, or an unreadable status: do not claim a clean version.
+        return "unknown"
+    return f"{commit}+changes" if changes else commit
 
 
 # Read once, when the process starts: that is the code a run executes, however

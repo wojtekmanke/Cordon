@@ -255,6 +255,30 @@ than vocabulary and length.
   the compliance direction cut attack success by 11 points. A random direction
   cut it by 12.
 
+## Result provenance
+
+The benchmark and fleet records refer to the current commit history. After
+a metadata-only history rewrite changed commit IDs, their `code` fields
+were mapped to the equivalent current commits. Each old and current commit
+was checked for an identical complete file tree; the mapping and tree IDs
+are in [docs/result-commit-map.json](docs/result-commit-map.json).
+
+Commit timestamps include deliberate random offsets and do not establish
+when the work was performed.
+
+The 3,667 benchmark and fleet records from that initial version reference
+nine commits. Of those records, 681 have a `+changes` suffix: source files
+had uncommitted changes when the process started, so the commit alone does
+not reconstruct the code used. Those suffixes are preserved. The initial
+monitor and probe outputs have no code stamps, so their exact generating
+versions are not recorded.
+
+New benchmark and fleet runs record the full commit ID at process start,
+retaining `+changes` for modified source and `unknown` when Git cannot
+establish the version. CI checks that every recorded code reference resolves
+to a commit reachable from the checked-out history, using a full clone.
+Run the same check with `.venv/bin/pytest -q tests/test_result_provenance.py`.
+
 ## Run it
 
 ```sh
